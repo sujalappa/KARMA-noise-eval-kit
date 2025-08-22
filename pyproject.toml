@@ -27,6 +27,9 @@ dependencies = [
     "requests>=2.32.4",
     "simple-term-menu>=1.6.6",
     "ipython>=8.37.0",
+    "pandas>=2.0.0",
+    "audiomentations>=0.33.0",
+    "soundfile>=0.12.1",
 ]
 
 [project.urls]

@@ -87,7 +87,7 @@ class EkaMedicalAsrDataset(BaseMultimodalDataset):
         )
 
     def format_item(self, sample: Dict[str, Any], model_name: str, noise_type: str, config: str) -> DataLoaderIterable:
-        print(f">>>> ENTERING EkaMedicalAsrDataset.format_item with noise: {noise_type}, model: {model_name}, config: {config}")
+        #print(f">>>> ENTERING EkaMedicalAsrDataset.format_item with noise: {noise_type}, model: {model_name}, config: {config}")
         audio_info = sample.get("audio", {})
         audio_data = audio_info.get("bytes")
         waveform, sr = sf.read(io.BytesIO(audio_data))
