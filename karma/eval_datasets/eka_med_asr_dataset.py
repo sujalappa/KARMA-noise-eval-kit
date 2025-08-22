@@ -25,9 +25,11 @@ COMMIT_HASH = "991bc807cab1f323f0283c836c634796bbf1ed3e"
 )
 class EkaMedicalAsrDataset(BaseMultimodalDataset):
     def set_eval_context(self, model_name: str, noise_types, config: str):
-        """Set context for evaluation (model, list of noise_types, config) to be used in __iter__."""
+        """
+        Set context for evaluation (model, list of noise_types, config) to be used in __iter__.
+        Now supports noise_types as list of 'type:intensity' strings, e.g., ['gaussian:0.009', 'clip:0.5']
+        """
         self._eval_model_name = model_name
-        # Accept a list of noise types/intensities
         if isinstance(noise_types, str):
             self._eval_noise_types = [noise_types]
         else:
@@ -58,12 +60,13 @@ class EkaMedicalAsrDataset(BaseMultimodalDataset):
         language: str = "hi",
         noise_type=None,
         processors=None,
+        noisy_audio_dir: str = "saved_noisy_audio",
         **kwargs,
     ):
         """
         Initialize the EkaMedicalAsrDataset dataset.
         Args:
-            noise_type: Type(s) of noise to apply (str or list)
+            noise_type: Type(s) of noise to apply (str or list), e.g., 'gaussian:0.009', 'clip:0.5'
         """
         super().__init__(
             dataset_name=DATASET_NAME,
@@ -73,7 +76,8 @@ class EkaMedicalAsrDataset(BaseMultimodalDataset):
             **kwargs,
         )
         self.language = language
-        # Accept a list of noise types/intensities
+        self.noisy_audio_dir = noisy_audio_dir
+        # Accept a list of noise types with explicit intensity, e.g., ['gaussian:0.009', 'clip:0.5']
         if noise_type is None:
             self.noise_types = ["clean"]
         elif isinstance(noise_type, str):
@@ -87,14 +91,24 @@ class EkaMedicalAsrDataset(BaseMultimodalDataset):
         )
 
     def format_item(self, sample: Dict[str, Any], model_name: str, noise_type: str, config: str) -> DataLoaderIterable:
-        #print(f">>>> ENTERING EkaMedicalAsrDataset.format_item with noise: {noise_type}, model: {model_name}, config: {config}")
+        """
+        Accepts noise_type as 'type:intensity' (e.g., 'gaussian:0.009').
+        If no intensity is provided, defaults to previous behavior.
+        """
         audio_info = sample.get("audio", {})
         audio_data = audio_info.get("bytes")
         waveform, sr = sf.read(io.BytesIO(audio_data))
         audio_file_id = sample.get("file_name", "unknown")
-        # Always parse noise_type and intensity using parse_noise_specification
-        parsed_noise_type, intensity = parse_noise_specification(noise_type)
-        # Apply noise with specified intensity
+        # Parse noise_type and intensity from argument (e.g., 'gaussian:0.009')
+        if ":" in noise_type:
+            parsed_noise_type, intensity = noise_type.split(":", 1)
+            try:
+                intensity = float(intensity)
+            except Exception:
+                intensity = None
+        else:
+            parsed_noise_type = noise_type
+            intensity = None
         augmented_waveform = apply_augmentations(
             waveform=waveform,
             sample_rate=sr,
@@ -112,7 +126,7 @@ class EkaMedicalAsrDataset(BaseMultimodalDataset):
         safe_noise = noise_type.replace(":", "_").replace("/", "_")
         safe_config = str(config).replace("/", "_")
         file_id_str = str(audio_file_id).replace("/", "_")
-        save_dir = os.path.join("saved_noisy_audio", safe_model, safe_noise, safe_config)
+        save_dir = os.path.join(self.noisy_audio_dir, safe_model, safe_noise, safe_config)
         os.makedirs(save_dir, exist_ok=True)
         out_filename = f"{file_id_str}.wav"
         out_path = os.path.join(save_dir, out_filename)

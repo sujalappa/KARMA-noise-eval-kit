@@ -247,17 +247,30 @@ def generate_csv_from_json(output_dir):
     # Create CSV files
     if summary_data:
         summary_df = pd.DataFrame(summary_data)
+        # Rename columns for clarity
+        summary_df = summary_df.rename(columns={
+            'asr_semantic_jiw': 'semantic_wer',
+            'wer_jiw': 'wer',
+            'cer_jiw': 'cer'
+        })
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         summary_file = output_path / f"evaluation_summary_{timestamp}.csv"
         summary_df.to_csv(summary_file, index=False)
-        print(f"📊 Summary CSV: {summary_file}")
+        print(f"\U0001F4CA Summary CSV: {summary_file}")
         print(f"Summary shape: {summary_df.shape}")
     
     if individual_data:
         individual_df = pd.DataFrame(individual_data)
+        # Rename metric column values for clarity
+        if 'metric' in individual_df.columns:
+            individual_df['metric'] = individual_df['metric'].replace({
+                'asr_semantic_jiw': 'semantic_wer',
+                'wer_jiw': 'wer',
+                'cer_jiw': 'cer'
+            })
         individual_file = output_path / f"individual_files_{timestamp}.csv"
         individual_df.to_csv(individual_file, index=False)
-        print(f"📋 Individual CSV: {individual_file}")
+        print(f"\U0001F4CB Individual CSV: {individual_file}")
         print(f"Individual shape: {individual_df.shape}")
 
 if __name__ == "__main__":

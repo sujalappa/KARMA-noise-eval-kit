@@ -13,7 +13,7 @@ import random
 from datetime import datetime
 from pathlib import Path
 
-def run_evaluation(model, dataset, noise_type, max_samples, output_dir, dataset_args=None):
+def run_evaluation(model, dataset, noise_type, max_samples, output_dir, dataset_args=None, noisy_audio_dir="saved_noisy_audio"):
     """Run a single evaluation - optimized for paid tier."""
     
     if dataset_args:
@@ -42,11 +42,12 @@ def run_evaluation(model, dataset, noise_type, max_samples, output_dir, dataset_
     else:
         safe_noise_type = noise_type.replace(":", "_")  # Replace colon with underscore for filename
         output_file = output_path / f"{safe_model}_{safe_noise_type}_{timestamp}.json"
+        dataset_args_str = f"{dataset}:noise_type={noise_type},language=hi,noisy_audio_dir={noisy_audio_dir}"
         cmd = [
             "karma", "eval",
             "--model", model,
             "--datasets", dataset,
-            "--dataset-args", f"{dataset}:noise_type={noise_type},language=hi",
+            "--dataset-args", dataset_args_str,
             "--max-samples", str(max_samples),
             "--output", str(output_file)
         ]
@@ -81,9 +82,10 @@ def main():
     parser = argparse.ArgumentParser(description="Simple Batch Evaluation with Auto CSV Generation")
     parser.add_argument("--models", nargs="+", required=True)
     parser.add_argument("--dataset", required=True)
-    parser.add_argument("--noise-types", nargs="+", default=["clean", "gaussian"])
+    parser.add_argument("--noise-types", nargs="+", default=["clean"])
     parser.add_argument("--max-samples", type=int, default=2)
     parser.add_argument("--output-dir", default="batch_results")
+    parser.add_argument("--augmented-audio-dir", default="saved_noisy_audio", help="Directory to save noisy audio files")
     parser.add_argument("--dataset-args", type=str, default=None, help="Full dataset args string to pass to karma eval (overrides --noise-types)")
 
     args = parser.parse_args()
@@ -102,7 +104,7 @@ def main():
         # Single run per model with all noise types in dataset_args
         for model in args.models:
             total_count += 1
-            success, json_file = run_evaluation(model, args.dataset, noise_type=None, max_samples=args.max_samples, output_dir=args.output_dir, dataset_args=args.dataset_args)
+            success, json_file = run_evaluation(model, args.dataset, noise_type=None, max_samples=args.max_samples, output_dir=args.output_dir, dataset_args=args.dataset_args, noisy_audio_dir=args.augmented_audio_dir)
             if success and json_file:
                 success_count += 1
                 json_files.append(json_file)
@@ -111,7 +113,7 @@ def main():
         for model in args.models:
             for noise_type in args.noise_types:
                 total_count += 1
-                success, json_file = run_evaluation(model, args.dataset, noise_type, args.max_samples, args.output_dir)
+                success, json_file = run_evaluation(model, args.dataset, noise_type, args.max_samples, args.output_dir, noisy_audio_dir=args.augmented_audio_dir)
                 if success and json_file:
                     success_count += 1
                     json_files.append(json_file)
