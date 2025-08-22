@@ -290,7 +290,8 @@ class Benchmark:
                 entities=entities,
             )
             if isinstance(score, dict):
-                scores[metric.metric_name] = score[metric.metric_name]
+                # Store the full score dict to preserve individual scores
+                scores[metric.metric_name] = score
             else:
                 scores[metric.metric_name] = score
         return scores

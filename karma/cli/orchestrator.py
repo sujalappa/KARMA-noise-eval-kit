@@ -366,10 +366,23 @@ class MultiDatasetOrchestrator:
                         f"[red]Invalid max_samples argument: {max_samples}, needs to be a positive integer[/red]"
                     )
 
+
             # Create dataset with validated arguments
             dataset = dataset_registry.create_dataset(
                 dataset_name, validate_args=True, **final_dataset_args
             )
+
+            # If this is EkaMedicalAsrDataset, set evaluation context for correct audio saving
+            if dataset.__class__.__name__ == "EkaMedicalAsrDataset":
+                # Pass the full list of noise types/intensities from dataset_args if present
+                model_name = self.model_name
+                # Try to get noise_types from dataset_args (could be str or list)
+                noise_types = dataset_args.get('noise_type', getattr(dataset, 'noise_types', ['unknown_noise']))
+                # If comma-separated string, split to list
+                if isinstance(noise_types, str) and ',' in noise_types:
+                    noise_types = [n.strip() for n in noise_types.split(',')]
+                config = getattr(dataset, 'language', getattr(dataset, 'config', 'unknown_config'))
+                dataset.set_eval_context(model_name, noise_types, config)
 
             # Run evaluation for each metric
             dataset_results = {}
